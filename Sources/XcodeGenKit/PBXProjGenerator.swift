@@ -679,7 +679,8 @@ public class PBXProjGenerator {
             if dependency.removeHeaders {
                 embedAttributes.append("RemoveHeadersOnCopy")
             }
-            return ["ATTRIBUTES": embedAttributes]
+            return ["ATTRIBUTES": embedAttributes,
+                    "DESTINATION": dependency.embedDestination]
         }
 
         func getDependencyFrameworkSettings(dependency: Dependency) -> [String: Any]? {
@@ -999,6 +1000,19 @@ public class PBXProjGenerator {
             )
         }
         
+        func splitByDestination(_ references: [PBXBuildFile]) -> [PBXCopyFilesBuildPhase.SubFolder : [PBXBuildFile]] {
+            
+            var retval = [PBXCopyFilesBuildPhase.SubFolder : [PBXBuildFile]]()
+            for reference in references {
+                let dst = reference.settings!["DESTINATION"] as! BuildPhaseSpec.CopyFilesSettings.Destination
+                let pbxDst = dst.destination!
+                var arr = retval[pbxDst] ?? [PBXBuildFile]()
+                arr.append(reference)
+                retval[pbxDst] = arr
+            }
+            return retval
+        }
+        
         copyFilesBuildPhasesFiles.merge(getBuildFilesForCopyFilesPhases()) { $0 + $1 }
 
         buildPhases += try target.preBuildScripts.map { try generateBuildScript(targetName: target.name, buildScript: $0) }
@@ -1119,12 +1133,15 @@ public class PBXProjGenerator {
 
         copyFrameworksReferences += getBuildFilesForPhase(.frameworks)
         if !copyFrameworksReferences.isEmpty {
+            
+            let destinationSplit = splitByDestination(copyFrameworksReferences)
+            for (dst, references) in destinationSplit {
+                let copyFilesPhase = addObject(
+                    getPBXCopyFilesBuildPhase(dstSubfolderSpec: dst, name: "Embed Frameworks", files: references)
+                )
 
-            let copyFilesPhase = addObject(
-                getPBXCopyFilesBuildPhase(dstSubfolderSpec: .frameworks, name: "Embed Frameworks", files: copyFrameworksReferences)
-            )
-
-            buildPhases.append(copyFilesPhase)
+                buildPhases.append(copyFilesPhase)
+            }
         }
 
         if !copyWatchReferences.isEmpty {

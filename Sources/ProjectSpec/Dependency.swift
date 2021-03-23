@@ -5,6 +5,7 @@ public struct Dependency: Equatable {
     public static let removeHeadersDefault = true
     public static let implicitDefault = false
     public static let weakLinkDefault = false
+    public static let embedDestinationDefault = BuildPhaseSpec.CopyFilesSettings.Destination.frameworks
 
     public var type: DependencyType
     public var reference: String
@@ -14,6 +15,7 @@ public struct Dependency: Equatable {
     public var link: Bool?
     public var implicit: Bool = implicitDefault
     public var weakLink: Bool = weakLinkDefault
+    public var embedDestination = embedDestinationDefault
 
     public init(
         type: DependencyType,
@@ -22,7 +24,8 @@ public struct Dependency: Equatable {
         codeSign: Bool? = nil,
         link: Bool? = nil,
         implicit: Bool = implicitDefault,
-        weakLink: Bool = weakLinkDefault
+        weakLink: Bool = weakLinkDefault,
+        embedDestination: BuildPhaseSpec.CopyFilesSettings.Destination = embedDestinationDefault
     ) {
         self.type = type
         self.reference = reference
@@ -31,6 +34,7 @@ public struct Dependency: Equatable {
         self.link = link
         self.implicit = implicit
         self.weakLink = weakLink
+        self.embedDestination = embedDestination
     }
 
     public enum CarthageLinkType: String {
@@ -112,6 +116,9 @@ extension Dependency: JSONObjectConvertible {
         if let bool: Bool = jsonDictionary.json(atKeyPath: "weak") {
             weakLink = bool
         }
+        if let destination: BuildPhaseSpec.CopyFilesSettings.Destination = jsonDictionary.json(atKeyPath: "destination") {
+            embedDestination = destination
+        }
     }
 }
 
@@ -121,6 +128,7 @@ extension Dependency: JSONEncodable {
             "embed": embed,
             "codeSign": codeSign,
             "link": link,
+            "destination": embedDestination.rawValue,
         ]
 
         if removeHeaders != Dependency.removeHeadersDefault {
